@@ -2,9 +2,9 @@
   "name": "@lchvelidze/github-action-packages",
   "version": "1.0.2",
   "description": "",
-  "main": "./myapp/myapp.js",
+  "main": "./index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "node -e \"require('./index.js').sayHello('World')\""
   },
   "keywords": [],
   "author": "",
