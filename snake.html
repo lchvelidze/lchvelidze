@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <title>Neon Snake</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@500;600&display=swap');
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      --bg-deep: #0a0e17;
+      --bg-panel: rgba(15, 22, 38, 0.85);
+      --accent: #00f5d4;
+      --accent-dim: #00b89a;
+      --danger: #ff3366;
+      --food: #ffd60a;
+      --snake-head: #7b2ff7;
+      --snake-body: #00f5d4;
+      --text: #e8f4f8;
+      --muted: #6b8a9a;
+      --glow: 0 0 20px rgba(0, 245, 212, 0.4);
+    }
+
+    html, body {
+      height: 100%;
+      overflow: hidden;
+      font-family: 'Rajdhani', sans-serif;
+      background: var(--bg-deep);
+      color: var(--text);
+    }
+
+    body {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background:
+        radial-gradient(ellipse 80% 50% at 50% -20%, rgba(123, 47, 247, 0.25), transparent),
+        radial-gradient(ellipse 60% 40% at 100% 100%, rgba(0, 245, 212, 0.12), transparent),
+        radial-gradient(ellipse 50% 30% at 0% 80%, rgba(255, 51, 102, 0.08), transparent),
+        var(--bg-deep);
+    }
+
+    .stars {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background-image:
+        radial-gradient(1px 1px at 20% 30%, rgba(255,255,255,0.4), transparent),
+        radial-gradient(1px 1px at 60% 70%, rgba(255,255,255,0.3), transparent),
+        radial-gradient(1px 1px at 80% 10%, rgba(255,255,255,0.35), transparent),
+        radial-gradient(1px 1px at 40% 90%, rgba(255,255,255,0.25), transparent),
+        radial-gradient(1.5px 1.5px at 10% 50%, rgba(0,245,212,0.5), transparent),
+        radial-gradient(1.5px 1.5px at 90% 40%, rgba(123,47,247,0.4), transparent);
+      background-size: 100% 100%;
+      opacity: 0.6;
+      z-index: 0;
+    }
+
+    .game-wrapper {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1rem;
+      padding: 1rem;
+      max-width: 100vw;
+    }
+
+    header {
+      text-align: center;
+    }
+
+    h1 {
+      font-family: 'Orbitron', sans-serif;
+      font-weight: 900;
+      font-size: clamp(1.5rem, 5vw, 2.2rem);
+      letter-spacing: 0.15em;
+      background: linear-gradient(135deg, var(--accent), var(--snake-head));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      text-shadow: none;
+      filter: drop-shadow(0 0 12px rgba(0, 245, 212, 0.35));
+    }
+
+    .hud {
+      display: flex;
+      gap: 2rem;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .stat {
+      background: var(--bg-panel);
+      border: 1px solid rgba(0, 245, 212, 0.2);
+      border-radius: 12px;
+      padding: 0.5rem 1.25rem;
+      backdrop-filter: blur(12px);
+      min-width: 100px;
+      text-align: center;
+    }
+
+    .stat-label {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--muted);
+    }
+
+    .stat-value {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--accent);
+    }
+
+    .canvas-container {
+      position: relative;
+      border-radius: 16px;
+      padding: 3px;
+      background: linear-gradient(135deg, var(--accent), var(--snake-head), var(--danger));
+      box-shadow: var(--glow), 0 8px 32px rgba(0, 0, 0, 0.5);
+    }
+
+    #gameCanvas {
+      display: block;
+      border-radius: 14px;
+      background: #0d1321;
+      touch-action: none;
+    }
+
+    .overlay {
+      position: absolute;
+      inset: 3px;
+      border-radius: 14px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: rgba(10, 14, 23, 0.88);
+      backdrop-filter: blur(8px);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.35s ease;
+    }
+
+    .overlay.visible {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .overlay h2 {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 1.8rem;
+      margin-bottom: 0.5rem;
+      color: var(--accent);
+    }
+
+    .overlay p {
+      color: var(--muted);
+      margin-bottom: 1.5rem;
+      font-size: 1.1rem;
+    }
+
+    .btn {
+      font-family: 'Orbitron', sans-serif;
+      font-weight: 700;
+      font-size: 0.95rem;
+      letter-spacing: 0.1em;
+      padding: 0.85rem 2rem;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      background: linear-gradient(135deg, var(--accent), var(--accent-dim));
+      color: var(--bg-deep);
+      transition: transform 0.15s, box-shadow 0.15s;
+      box-shadow: 0 4px 20px rgba(0, 245, 212, 0.35);
+    }
+
+    .btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 28px rgba(0, 245, 212, 0.5);
+    }
+
+    .btn:active {
+      transform: translateY(0);
+    }
+
+    .controls-hint {
+      font-size: 0.9rem;
+      color: var(--muted);
+      text-align: center;
+      max-width: 420px;
+      line-height: 1.5;
+    }
+
+    .dpad {
+      display: none;
+      grid-template-columns: repeat(3, 56px);
+      grid-template-rows: repeat(3, 56px);
+      gap: 6px;
+      margin-top: 0.5rem;
+    }
+
+    .dpad button {
+      font-size: 1.4rem;
+      border: 1px solid rgba(0, 245, 212, 0.25);
+      background: var(--bg-panel);
+      color: var(--accent);
+      border-radius: 12px;
+      cursor: pointer;
+      backdrop-filter: blur(8px);
+      transition: background 0.15s, transform 0.1s;
+    }
+
+    .dpad button:active {
+      background: rgba(0, 245, 212, 0.2);
+      transform: scale(0.95);
+    }
+
+    .dpad .up { grid-column: 2; grid-row: 1; }
+    .dpad .left { grid-column: 1; grid-row: 2; }
+    .dpad .right { grid-column: 3; grid-row: 2; }
+    .dpad .down { grid-column: 2; grid-row: 3; }
+
+    .mobile-only { display: none; }
+
+    @media (max-width: 640px), (hover: none) {
+      .dpad { display: grid; }
+      .controls-hint .desktop-only { display: none; }
+      .controls-hint .mobile-only { display: inline; }
+    }
+  </style>
+</head>
+<body>
+  <div class="stars" aria-hidden="true"></div>
+  <div class="game-wrapper">
+    <header>
+      <h1>NEON SNAKE</h1>
+    </header>
+    <div class="hud">
+      <div class="stat">
+        <div class="stat-label">Score</div>
+        <div class="stat-value" id="score">0</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Best</div>
+        <div class="stat-value" id="best">0</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Speed</div>
+        <div class="stat-value" id="speed">1</div>
+      </div>
+    </div>
+    <div class="canvas-container">
+      <canvas id="gameCanvas" width="480" height="480"></canvas>
+      <div class="overlay visible" id="startOverlay">
+        <h2>NEON SNAKE</h2>
+        <p>Eat orbs. Grow longer. Don't hit the walls or yourself.</p>
+        <button class="btn" id="startBtn">PLAY</button>
+      </div>
+      <div class="overlay" id="gameOverOverlay">
+        <h2>GAME OVER</h2>
+        <p>Score: <span id="finalScore">0</span></p>
+        <button class="btn" id="restartBtn">PLAY AGAIN</button>
+      </div>
+    </div>
+    <p class="controls-hint">
+      <span class="desktop-only">Arrow keys or WASD to move · Space to pause</span>
+      <span class="mobile-only">Use the D-pad below</span>
+    </p>
+    <div class="dpad" id="dpad">
+      <button type="button" class="up" data-dir="up" aria-label="Up">▲</button>
+      <button type="button" class="left" data-dir="left" aria-label="Left">◀</button>
+      <button type="button" class="right" data-dir="right" aria-label="Right">▶</button>
+      <button type="button" class="down" data-dir="down" aria-label="Down">▼</button>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      const canvas = document.getElementById('gameCanvas');
+      const ctx = canvas.getContext('2d');
+      const scoreEl = document.getElementById('score');
+      const bestEl = document.getElementById('best');
+      const speedEl = document.getElementById('speed');
+      const startOverlay = document.getElementById('startOverlay');
+      const gameOverOverlay = document.getElementById('gameOverOverlay');
+      const finalScoreEl = document.getElementById('finalScore');
+      const startBtn = document.getElementById('startBtn');
+      const restartBtn = document.getElementById('restartBtn');
+
+      const GRID = 20;
+      const CELL = canvas.width / GRID;
+      const BASE_TICK = 140;
+      const STORAGE_KEY = 'neonSnakeBest';
+
+      const DIR = {
+        up: { x: 0, y: -1 },
+        down: { x: 0, y: 1 },
+        left: { x: -1, y: 0 },
+        right: { x: 1, y: 0 }
+      };
+
+      let snake, direction, nextDirection, food, score, best, tickMs, lastTick, particles;
+      let running = false;
+      let paused = false;
+      let animId = null;
+      let gridPulse = 0;
+
+      best = parseInt(localStorage.getItem(STORAGE_KEY) || '0', 10);
+      bestEl.textContent = best;
+
+      function resizeCanvas() {
+        const max = Math.min(window.innerWidth - 32, window.innerHeight - 280, 520);
+        const size = Math.floor(max / GRID) * GRID;
+        canvas.width = size;
+        canvas.height = size;
+      }
+
+      resizeCanvas();
+      window.addEventListener('resize', resizeCanvas);
+
+      function cellSize() {
+        return canvas.width / GRID;
+      }
+
+      function initGame() {
+        const mid = Math.floor(GRID / 2);
+        snake = [
+          { x: mid, y: mid },
+          { x: mid - 1, y: mid },
+          { x: mid - 2, y: mid }
+        ];
+        direction = DIR.right;
+        nextDirection = DIR.right;
+        score = 0;
+        tickMs = BASE_TICK;
+        particles = [];
+        scoreEl.textContent = '0';
+        speedEl.textContent = '1';
+        spawnFood();
+      }
+
+      function spawnFood() {
+        const occupied = new Set(snake.map(s => `${s.x},${s.y}`));
+        let pos;
+        do {
+          pos = {
+            x: Math.floor(Math.random() * GRID),
+            y: Math.floor(Math.random() * GRID)
+          };
+        } while (occupied.has(`${pos.x},${pos.y}`));
+        food = pos;
+      }
+
+      function spawnParticles(x, y, color) {
+        for (let i = 0; i < 14; i++) {
+          const angle = (Math.PI * 2 * i) / 14 + Math.random() * 0.5;
+          particles.push({
+            x: x * cellSize() + cellSize() / 2,
+            y: y * cellSize() + cellSize() / 2,
+            vx: Math.cos(angle) * (2 + Math.random() * 4),
+            vy: Math.sin(angle) * (2 + Math.random() * 4),
+            life: 1,
+            color
+          });
+        }
+      }
+
+      function updateParticles(dt) {
+        particles = particles.filter(p => {
+          p.x += p.vx;
+          p.y += p.vy;
+          p.life -= dt * 0.003;
+          p.vx *= 0.96;
+          p.vy *= 0.96;
+          return p.life > 0;
+        });
+      }
+
+      function drawBackground() {
+        const cs = cellSize();
+        ctx.fillStyle = '#0d1321';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        gridPulse += 0.02;
+        const alpha = 0.04 + Math.sin(gridPulse) * 0.015;
+
+        ctx.strokeStyle = `rgba(0, 245, 212, ${alpha})`;
+        ctx.lineWidth = 1;
+        for (let i = 0; i <= GRID; i++) {
+          ctx.beginPath();
+          ctx.moveTo(i * cs, 0);
+          ctx.lineTo(i * cs, canvas.height);
+          ctx.stroke();
+          ctx.beginPath();
+          ctx.moveTo(0, i * cs);
+          ctx.lineTo(canvas.width, i * cs);
+          ctx.stroke();
+        }
+
+        const cx = canvas.width / 2;
+        const cy = canvas.height / 2;
+        const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, canvas.width * 0.7);
+        grad.addColorStop(0, 'rgba(123, 47, 247, 0.08)');
+        grad.addColorStop(1, 'transparent');
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+      }
+
+      function roundRect(x, y, w, h, r) {
+        ctx.beginPath();
+        ctx.moveTo(x + r, y);
+        ctx.lineTo(x + w - r, y);
+        ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+        ctx.lineTo(x + w, y + h - r);
+        ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+        ctx.lineTo(x + r, y + h);
+        ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+        ctx.lineTo(x, y + r);
+        ctx.quadraticCurveTo(x, y, x + r, y);
+        ctx.closePath();
+      }
+
+      function drawSnake() {
+        const cs = cellSize();
+        const pad = cs * 0.08;
+        const r = cs * 0.28;
+
+        snake.forEach((seg, i) => {
+          const x = seg.x * cs + pad;
+          const y = seg.y * cs + pad;
+          const w = cs - pad * 2;
+          const h = cs - pad * 2;
+          const t = i / Math.max(snake.length - 1, 1);
+
+          if (i === 0) {
+            const headGrad = ctx.createLinearGradient(x, y, x + w, y + h);
+            headGrad.addColorStop(0, '#9d4edd');
+            headGrad.addColorStop(1, '#00f5d4');
+            ctx.shadowColor = '#7b2ff7';
+            ctx.shadowBlur = 16;
+            ctx.fillStyle = headGrad;
+          } else {
+            const g = ctx.createLinearGradient(x, y, x + w, y + h);
+            g.addColorStop(0, `rgba(0, 245, 212, ${1 - t * 0.35})`);
+            g.addColorStop(1, `rgba(0, 184, 154, ${0.7 - t * 0.3})`);
+            ctx.shadowColor = 'rgba(0, 245, 212, 0.5)';
+            ctx.shadowBlur = 8 * (1 - t * 0.5);
+            ctx.fillStyle = g;
+          }
+
+          roundRect(x, y, w, h, r);
+          ctx.fill();
+          ctx.shadowBlur = 0;
+
+          if (i === 0) {
+            const eyeOffset = cs * 0.22;
+            let ex1, ey1, ex2, ey2;
+            if (direction === DIR.up) {
+              ex1 = x + w * 0.3; ey1 = y + eyeOffset;
+              ex2 = x + w * 0.7; ey2 = y + eyeOffset;
+            } else if (direction === DIR.down) {
+              ex1 = x + w * 0.3; ey1 = y + h - eyeOffset;
+              ex2 = x + w * 0.7; ey2 = y + h - eyeOffset;
+            } else if (direction === DIR.left) {
+              ex1 = x + eyeOffset; ey1 = y + h * 0.3;
+              ex2 = x + eyeOffset; ey2 = y + h * 0.7;
+            } else {
+              ex1 = x + w - eyeOffset; ey1 = y + h * 0.3;
+              ex2 = x + w - eyeOffset; ey2 = y + h * 0.7;
+            }
+            ctx.fillStyle = '#0a0e17';
+            ctx.beginPath();
+            ctx.arc(ex1, ey1, cs * 0.07, 0, Math.PI * 2);
+            ctx.arc(ex2, ey2, cs * 0.07, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#fff';
+            ctx.beginPath();
+            ctx.arc(ex1, ey1, cs * 0.035, 0, Math.PI * 2);
+            ctx.arc(ex2, ey2, cs * 0.035, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        });
+      }
+
+      function drawFood() {
+        const cs = cellSize();
+        const cx = food.x * cs + cs / 2;
+        const cy = food.y * cs + cs / 2;
+        const pulse = 0.85 + Math.sin(Date.now() * 0.008) * 0.15;
+        const radius = (cs / 2 - 4) * pulse;
+
+        ctx.shadowColor = '#ffd60a';
+        ctx.shadowBlur = 20;
+
+        const grad = ctx.createRadialGradient(cx - 4, cy - 4, 0, cx, cy, radius);
+        grad.addColorStop(0, '#fff9c4');
+        grad.addColorStop(0.4, '#ffd60a');
+        grad.addColorStop(1, '#ff9f1c');
+
+        ctx.beginPath();
+        ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+        ctx.fillStyle = grad;
+        ctx.fill();
+        ctx.shadowBlur = 0;
+
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(cx, cy, radius * 0.6, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+
+      function drawParticles() {
+        particles.forEach(p => {
+          ctx.globalAlpha = p.life;
+          ctx.fillStyle = p.color;
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, 3 * p.life, 0, Math.PI * 2);
+          ctx.fill();
+        });
+        ctx.globalAlpha = 1;
+      }
+
+      function drawPaused() {
+        if (!paused || !running) return;
+        ctx.fillStyle = 'rgba(10, 14, 23, 0.6)';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.font = '700 28px Orbitron, sans-serif';
+        ctx.fillStyle = '#00f5d4';
+        ctx.textAlign = 'center';
+        ctx.fillText('PAUSED', canvas.width / 2, canvas.height / 2);
+      }
+
+      function render() {
+        drawBackground();
+        drawFood();
+        drawSnake();
+        drawParticles();
+        drawPaused();
+      }
+
+      function tick(now) {
+        if (!running || paused) return;
+
+        if (now - lastTick < tickMs) return;
+        lastTick = now;
+
+        direction = nextDirection;
+        const head = snake[0];
+        const newHead = {
+          x: head.x + direction.x,
+          y: head.y + direction.y
+        };
+
+        if (
+          newHead.x < 0 || newHead.x >= GRID ||
+          newHead.y < 0 || newHead.y >= GRID
+        ) {
+          gameOver();
+          return;
+        }
+
+        if (snake.some(s => s.x === newHead.x && s.y === newHead.y)) {
+          gameOver();
+          return;
+        }
+
+        snake.unshift(newHead);
+
+        if (newHead.x === food.x && newHead.y === food.y) {
+          score += 10;
+          scoreEl.textContent = score;
+          spawnParticles(food.x, food.y, '#ffd60a');
+          spawnFood();
+          tickMs = Math.max(55, BASE_TICK - Math.floor(score / 30) * 8);
+          const level = Math.floor(score / 30) + 1;
+          speedEl.textContent = String(level);
+        } else {
+          snake.pop();
+        }
+      }
+
+      function loop(now) {
+        tick(now);
+        updateParticles(16);
+        render();
+        if (running) animId = requestAnimationFrame(loop);
+      }
+
+      function startGame() {
+        initGame();
+        running = true;
+        paused = false;
+        lastTick = 0;
+        startOverlay.classList.remove('visible');
+        gameOverOverlay.classList.remove('visible');
+        if (animId) cancelAnimationFrame(animId);
+        animId = requestAnimationFrame(loop);
+      }
+
+      function gameOver() {
+        running = false;
+        if (animId) cancelAnimationFrame(animId);
+        if (score > best) {
+          best = score;
+          localStorage.setItem(STORAGE_KEY, String(best));
+          bestEl.textContent = best;
+        }
+        finalScoreEl.textContent = score;
+        gameOverOverlay.classList.add('visible');
+        render();
+      }
+
+      function setDirection(dir) {
+        const opposite =
+          (direction === DIR.up && dir === DIR.down) ||
+          (direction === DIR.down && dir === DIR.up) ||
+          (direction === DIR.left && dir === DIR.right) ||
+          (direction === DIR.right && dir === DIR.left);
+        if (opposite) return;
+        nextDirection = dir;
+      }
+
+      const keyMap = {
+        ArrowUp: DIR.up, ArrowDown: DIR.down, ArrowLeft: DIR.left, ArrowRight: DIR.right,
+        w: DIR.up, s: DIR.down, a: DIR.left, d: DIR.right,
+        W: DIR.up, S: DIR.down, A: DIR.left, D: DIR.right
+      };
+
+      document.addEventListener('keydown', (e) => {
+        if (keyMap[e.key]) {
+          e.preventDefault();
+          if (running && !paused) setDirection(keyMap[e.key]);
+        }
+        if (e.key === ' ' && running) {
+          e.preventDefault();
+          paused = !paused;
+        }
+      });
+
+      const dpadDirs = {
+        up: DIR.up, down: DIR.down, left: DIR.left, right: DIR.right
+      };
+
+      document.querySelectorAll('.dpad button').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const d = dpadDirs[btn.dataset.dir];
+          if (running && !paused) setDirection(d);
+        });
+      });
+
+      startBtn.addEventListener('click', startGame);
+      restartBtn.addEventListener('click', startGame);
+
+      render();
+    })();
+  </script>
+</body>
+</html>
